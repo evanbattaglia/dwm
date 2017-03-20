@@ -195,6 +195,8 @@ static void focus(Client *c);
 static void focusin(XEvent *e);
 static void focusmon(const Arg *arg);
 static void focusstack(const Arg *arg);
+static void focusleftright(const Arg *arg);
+static void focusupdown(const Arg *arg);
 static Atom getatomprop(Client *c, Atom prop);
 static int getrootptr(int *x, int *y);
 static long getstate(Window w);
@@ -938,6 +940,69 @@ focusmon(const Arg *arg)
 					in gedit and anjuta */
 	selmon = m;
 	focus(NULL);
+}
+
+void focusupdown(const Arg *arg)
+{
+	Client *i = NULL, *miny_client = NULL;
+  int miny_diff = 0, y_diff;
+  int is_to_side;
+
+	if (!selmon->sel)
+		return;
+
+  for (i = selmon->clients; i; i = i->next) {
+    is_to_side = (arg->i < 0) ?
+      (i->y < selmon->sel->y) : // looking for window above current
+      (i->y > selmon->sel->y);  // looking for window below current
+
+    if (ISVISIBLE(i) && i->x == selmon->sel->x && is_to_side) {
+      // Find window that has same x value (is strictly above/below)
+      // but is the closest. This is different from left/right as we can only
+      // have two columns
+      y_diff = abs(i->y - selmon->sel->y);
+      if (!miny_client || y_diff < miny_diff) {
+        miny_client = i;
+        miny_diff = y_diff;
+      }
+    }
+  }
+
+	if (miny_client) {
+		focus(miny_client);
+		restack(selmon);
+	}
+}
+
+// same as above except x / y swapped
+void focusleftright(const Arg *arg)
+{
+	Client *i = NULL, *miny_client = NULL;
+  int miny_diff = 0, y_diff;
+  int is_to_side;
+
+	if (!selmon->sel)
+		return;
+
+  for (i = selmon->clients; i; i = i->next) {
+    is_to_side = (arg->i < 0) ?
+      (i->x < selmon->sel->x) : // looking for window to left of current
+      (i->x > selmon->sel->x);  // looking for window to right of current
+
+    if (ISVISIBLE(i) && is_to_side) {
+      // Find window to the side that has closest y value
+      y_diff = abs(i->y - selmon->sel->y);
+      if (!miny_client || y_diff < miny_diff) {
+        miny_client = i;
+        miny_diff = y_diff;
+      }
+    }
+  }
+
+	if (miny_client) {
+		focus(miny_client);
+		restack(selmon);
+	}
 }
 
 void
